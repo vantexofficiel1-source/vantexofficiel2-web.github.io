@@ -1,0 +1,2675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VANTEX - Système de Paiement</title>
+    <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAamaJn-3EQvRaLOhV7MB8U",
+  authDomain: "vantex-664f1.firebaseapp.com",
+  projectId: "vantex-664f1",
+  storageBucket: "vantex-664f1.firebasestorage.app",
+  messagingSenderId: "762779596180",
+  appId: "1:762779596180:web:addb5330bf"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+   <!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+// Configuration Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyAamaJn-3EQvRaLOhV7MB8U",
+  authDomain: "vantex-664f1.firebaseapp.com",
+  projectId: "vantex-664f1",
+  storageBucket: "vantex-664f1.firebasestorage.app",
+  messagingSenderId: "762779596180",
+  appId: "1:762779596180:web:addb5330bf"
+};
+
+// Initialiser Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+console.log('🔥 Firebase connecté');
+
+// Sauvegarder sur Firebase
+window.saveToFirebase = async function(collection, data) {
+    try {
+        const docId = data.id ? data.id.toString() : Date.now().toString();
+        await db.collection(collection).doc(docId).set(data);
+        console.log(`✅ ${collection} sauvegardé:`, docId);
+    } catch (error) {
+        console.error(`❌ Erreur sauvegarde ${collection}:`, error);
+    }
+};
+
+// Récupérer depuis Firebase
+window.getFromFirebase = async function(collection) {
+    try {
+        const snapshot = await db.collection(collection).get();
+        const items = [];
+        snapshot.forEach(doc => items.push({id: doc.id, ...doc.data()}));
+        console.log(`✅ ${collection} chargé:`, items.length);
+        return items;
+    } catch (error) {
+        console.error(`❌ Erreur chargement ${collection}:`, error);
+        return [];
+    }
+};
+
+// Charger les données au démarrage
+window.addEventListener('DOMContentLoaded', async function() {
+    console.log('🔄 Synchronisation Firebase...');
+    
+    try {
+        // Charger les comptes
+        const accounts = await getFromFirebase('accounts');
+        if (accounts.length > 0) {
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+        }
+        
+        // Charger les transactions
+        const transactions = await getFromFirebase('transactions');
+        if (transactions.length > 0) {
+            localStorage.setItem('vantex_transactions', JSON.stringify(transactions));
+        }
+        
+        // Charger les virements
+        const transfers = await getFromFirebase('transfers');
+        if (transfers.length > 0) {
+            localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+        }
+        
+        console.log('✅ Synchronisation terminée');
+    } catch (error) {
+        console.error('❌ Erreur synchronisation:', error);
+    }
+});
+
+// NOUVEAU : Intercepter TOUTES les modifications de localStorage
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+    // Sauvegarder dans localStorage
+    originalSetItem.call(this, key, value);
+    
+    // Sauvegarder sur Firebase
+    if (key === 'vantex_accounts') {
+        const accounts = JSON.parse(value);
+        accounts.forEach(account => saveToFirebase('accounts', account));
+        console.log('🔄 Comptes synchronisés sur Firebase');
+    } else if (key === 'vantex_transactions') {
+        const transactions = JSON.parse(value);
+        transactions.forEach(transaction => saveToFirebase('transactions', transaction));
+        console.log('🔄 Transactions synchronisées sur Firebase');
+    } else if (key === 'vantex_transfers') {
+        const transfers = JSON.parse(value);
+        transfers.forEach(transfer => saveToFirebase('transfers', transfer));
+        console.log('🔄 Virements synchronisés sur Firebase');
+    }
+};
+
+// NOUVEAU : Forcer le rechargement des données toutes les 3 secondes
+setInterval(async function() {
+    try {
+        const accounts = await getFromFirebase('accounts');
+        if (accounts.length > 0) {
+            const currentAccounts = JSON.parse(localStorage.getItem('vantex_accounts') || '[]');
+            
+            // Vérifier s'il y a des changements
+            if (JSON.stringify(accounts) !== JSON.stringify(currentAccounts)) {
+                originalSetItem.call(localStorage, 'vantex_accounts', JSON.stringify(accounts));
+                console.log('🔄 Comptes mis à jour depuis Firebase');
+                
+                // Recharger la page si on est sur l'écran client
+                if (window.location.hash.includes('#client') || document.querySelector('.client-dashboard')) {
+                    location.reload();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erreur auto-sync:', error);
+    }
+}, 3000); // Toutes les 3 secondes
+
+console.log('✅ Firebase configuré avec auto-sync');
+</script>
+
+</script> <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #0066CC;
+            --light-blue: #B8E0E8;
+            --dark-text: #1a1a1a;
+            --light-gray: #f5f5f5;
+            --white: #ffffff;
+            --success: #4CAF50;
+            --danger: #f44336;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light-gray);
+            min-height: 100vh;
+        }
+
+        /* Login Screen */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, #004999 100%);
+            padding: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-logo h1 {
+            color: var(--primary-blue);
+            font-size: 32px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .login-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-blue);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark-text);
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0052a3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,102,204,0.3);
+        }
+
+        .user-type-switch {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .user-type-switch button {
+            background: none;
+            border: none;
+            color: var(--primary-blue);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+
+        /* Client Interface */
+        .client-container {
+            display: none;
+            min-height: 100vh;
+            background: var(--light-gray);
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .logo-icon {
+            width: 35px;
+            height: 35px;
+            background: var(--primary-blue);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .notification-btn, .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .notification-btn {
+            background: #f0f0f0;
+        }
+
+        .notification-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .user-avatar {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .welcome {
+            padding: 30px 20px 20px;
+            background: white;
+        }
+
+        .welcome h2 {
+            font-size: 24px;
+            color: var(--dark-text);
+            margin-bottom: 5px;
+        }
+
+        .balance-card {
+            background: white;
+            margin: 20px;
+            padding: 30px 25px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
+
+        .balance-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .checkmark {
+            color: var(--success);
+            font-size: 20px;
+        }
+
+        .balance-amount {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--dark-text);
+            margin-bottom: 20px;
+        }
+
+        .account-subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .action-btn {
+            background: #f8f8f8;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 15px;
+            color: var(--dark-text);
+        }
+
+        .action-btn:hover {
+            background: #e8e8e8;
+            transform: translateY(-2px);
+        }
+
+        .action-btn.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .transactions-section {
+            padding: 20px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--dark-text);
+        }
+
+        .no-transactions {
+            background: white;
+            padding: 40px 20px;
+            border-radius: 15px;
+            text-align: center;
+            color: #666;
+        }
+
+        .no-transactions-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .transaction-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .transaction-info h4 {
+            margin-bottom: 5px;
+            color: var(--dark-text);
+        }
+
+        .transaction-date {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .transaction-amount {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .transaction-amount.positive {
+            color: var(--success);
+        }
+
+        .transaction-amount.negative {
+            color: var(--danger);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--primary-blue);
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            flex: 1;
+            padding: 5px;
+            transition: all 0.3s;
+        }
+
+        .nav-item:hover {
+            opacity: 0.8;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+        }
+
+        /* Admin Panel */
+        .admin-container {
+            display: none;
+            min-height: 100vh;
+            background: var(--light-gray);
+        }
+
+        .admin-header {
+            background: var(--primary-blue);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-header h1 {
+            font-size: 24px;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .admin-content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .admin-tab {
+            background: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .admin-tab.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .form-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .form-card h3 {
+            margin-bottom: 20px;
+            color: var(--dark-text);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: var(--light-gray);
+            font-weight: 600;
+            color: var(--dark-text);
+        }
+
+        .action-buttons-admin {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-info {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-small:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #e8f5e9;
+            color: var(--success);
+        }
+
+        .status-blocked {
+            background: #ffebee;
+            color: var(--danger);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: var(--dark-text);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: #ffebee;
+            color: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+
+            .balance-amount {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <div class="login-logo">
+                <h1 style="color: var(--primary-blue); font-size: 48px; font-weight: 700; margin-bottom: 5px;">
+                    VANTEX
+                </h1>
+                <p style="color: #999; font-size: 16px; margin-bottom: 30px;">Banque sécurisée</p>
+            </div>
+            <div id="loginAlert" class="alert"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail" style="color: #666; font-size: 15px;">Email</label>
+                    <input type="text" id="loginEmail" required placeholder="votre@email.com" style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword" style="color: #666; font-size: 15px;">Mot de passe</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" style="background: #f5f5f5;">
+                </div>
+                <button type="submit" class="btn btn-primary">Se connecter</button>
+            </form>
+            <div class="user-type-switch">
+                <button onclick="switchToAdmin()" style="color: #999;">Connexion Administration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Interface -->
+    <div class="client-container" id="clientInterface">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">🏦</div>
+                VANTEX
+            </div>
+            <div class="user-info">
+                <div class="notification-btn">🔔</div>
+                <div class="user-avatar" id="userAvatar">FK</div>
+            </div>
+        </div>
+
+        <div class="welcome">
+            <h2>Bienvenue, <span id="userName">FOFANA KARAMO</span></h2>
+        </div>
+
+        <div class="balance-card">
+            <div class="balance-label">
+                <span>Solde disponible</span>
+                <span class="checkmark">✓</span>
+            </div>
+            <div class="balance-amount" id="clientBalance">0,00 GNF</div>
+            <p class="account-subtitle">Compte pour tous vos besoins</p>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="showIban()">
+                    💳 Voir mon iban
+                </button>
+                <button class="action-btn" onclick="openTransferModal()">
+                    ➤ Effectuer un virement
+                </button>
+                <button class="action-btn full-width" onclick="showVirtualCard()">
+                    💳 Voir ma carte virtuelle
+                </button>
+            </div>
+        </div>
+
+        <div class="transactions-section">
+            <h3 class="section-title">
+                ☰ Historique des transactions
+            </h3>
+            <div id="transactionsList">
+                <div class="no-transactions">
+                    <div class="no-transactions-icon">📋</div>
+                    <p>Aucune transaction n'a été effectuée sur votre compte.</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="height: 80px;"></div>
+
+        <div class="bottom-nav">
+            <div class="nav-item">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Portefeuille</div>
+            </div>
+            <div class="nav-item" onclick="openTransferModal()">
+                <div class="nav-icon">💸</div>
+                <div class="nav-label">Virement</div>
+            </div>
+            <div class="nav-item" onclick="showVirtualCard()">
+                <div class="nav-icon">💳</div>
+                <div class="nav-label">Carte virtuelle</div>
+            </div>
+            <div class="nav-item" onclick="logoutClient()">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Mon compte</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-container" id="adminPanel">
+        <div class="admin-header">
+            <h1>🎛️ Panel Administrateur VANTEX</h1>
+            <button class="logout-btn" onclick="logoutAdmin()">Déconnexion</button>
+        </div>
+
+        <div class="admin-content">
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchTab('dashboard')">Tableau de bord</button>
+                <button class="admin-tab" onclick="switchTab('accounts')">Gestion des comptes</button>
+                <button class="admin-tab" onclick="switchTab('recharge')">Recharger</button>
+                <button class="admin-tab" onclick="switchTab('transfers')">Virements</button>
+                <button class="admin-tab" onclick="switchTab('transactions')">Transactions</button>
+                <button class="admin-tab" onclick="switchTab('settings')">Paramètres</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Comptes</div>
+                        <div class="stat-value" id="totalAccounts">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Comptes Actifs</div>
+                        <div class="stat-value" id="activeAccounts">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Comptes Gérés</div>
+                        <div class="stat-value" id="totalBalance">0 comptes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Transactions Aujourd'hui</div>
+                        <div class="stat-value" id="todayTransactions">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts Tab -->
+            <div id="accountsTab" class="tab-content">
+                <div class="form-card">
+                    <h3>➕ Créer un nouveau compte</h3>
+                    <div id="createAccountAlert" class="alert"></div>
+                    <form id="createAccountForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nom</label>
+                                <input type="text" id="newAccountLastName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Prénom</label>
+                                <input type="text" id="newAccountFirstName" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="newAccountEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="tel" id="newAccountPhone" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Pays</label>
+                                <select id="newAccountCountry" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                                    <option value="">-- Sélectionner un pays --</option>
+                                    <option value="Guinée">🇬🇳 Guinée</option>
+                                    <option value="France">🇫🇷 France</option>
+                                    <option value="Côte d'Ivoire">🇨🇮 Côte d'Ivoire</option>
+                                    <option value="Sénégal">🇸🇳 Sénégal</option>
+                                    <option value="Mali">🇲🇱 Mali</option>
+                                    <option value="Burkina Faso">🇧🇫 Burkina Faso</option>
+                                    <option value="Bénin">🇧🇯 Bénin</option>
+                                    <option value="Togo">🇹🇬 Togo</option>
+                                    <option value="Niger">🇳🇪 Niger</option>
+                                    <option value="Cameroun">🇨🇲 Cameroun</option>
+                                    <option value="Gabon">🇬🇦 Gabon</option>
+                                    <option value="Congo">🇨🇬 Congo</option>
+                                    <option value="RD Congo">🇨🇩 RD Congo</option>
+                                    <option value="Maroc">🇲🇦 Maroc</option>
+                                    <option value="Algérie">🇩🇿 Algérie</option>
+                                    <option value="Tunisie">🇹🇳 Tunisie</option>
+                                    <option value="Belgique">🇧🇪 Belgique</option>
+                                    <option value="Suisse">🇨🇭 Suisse</option>
+                                    <option value="Canada">🇨🇦 Canada</option>
+                                    <option value="États-Unis">🇺🇸 États-Unis</option>
+                                    <option value="Autre">🌍 Autre</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Mot de passe</label>
+                                <input type="password" id="newAccountPassword" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Solde initial</label>
+                                <input type="number" id="newAccountBalance" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Progression automatique (%)</label>
+                                <input type="number" id="newAccountProgress" value="100" min="0" max="100">
+                                <small style="color: #666; font-size: 12px;">Pourcentage pour les virements de ce compte</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Message d'erreur si échec (optionnel)</label>
+                            <input type="text" id="newAccountErrorMsg" placeholder="Ex: Vérification des informations requise">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Créer le compte</button>
+                    </form>
+                </div>
+
+                <div class="table-container">
+                    <h3 style="margin-bottom: 20px;">📋 Liste des comptes</h3>
+                    <table id="accountsTable">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Pays</th>
+                                <th>Solde</th>
+                                <th>Progression</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recharge Tab -->
+            <div id="rechargeTab" class="tab-content">
+                <div class="form-card">
+                    <h3>💰 Recharger un compte</h3>
+                    <div id="rechargeAlert" class="alert"></div>
+                    <form id="rechargeForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Sélectionner le compte</label>
+                                <select id="rechargeAccountSelect" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                                    <option value="">-- Choisir un compte --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Montant</label>
+                                <input type="number" id="rechargeAmount" required min="1" step="0.01">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Note (optionnel)</label>
+                            <input type="text" id="rechargeNote" placeholder="Ex: Recharge mensuelle">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Recharger</button>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3>📉 Débiter un compte</h3>
+                    <div id="debitAlert" class="alert"></div>
+                    <form id="debitForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Sélectionner le compte</label>
+                                <select id="debitAccountSelect" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                                    <option value="">-- Choisir un compte --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Montant</label>
+                                <input type="number" id="debitAmount" required min="1" step="0.01">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Note (optionnel)</label>
+                            <input type="text" id="debitNote" placeholder="Ex: Retrait">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Débiter</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Transfers Tab -->
+            <div id="transfersTab" class="tab-content">
+                <div class="form-card">
+                    <h3>⚙️ Paramètres des virements</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Configurez le comportement automatique des virements</p>
+                    <div class="form-row">
+        <div class="form-group">
+            <label>💰 Frais de transaction (%)</label>
+            <input type="number" id="transactionFeePercent" min="0" max="100" step="0.1" value="2" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+            <small style="color: #666; font-size: 13px;">Pourcentage de frais appliqué à chaque virement (0 = gratuit)</small>
+        </div>
+    </div>
+    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Progression automatique (%)</label>
+                            <input type="number" id="autoProgress" min="0" max="100" value="100" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                            <small style="color: #666; font-size: 13px;">Les nouveaux virements s'arrêteront automatiquement à ce pourcentage</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Message d'erreur (si progression < 100%)</label>
+                            <input type="text" id="autoErrorMessage" placeholder="Ex: Vérification des informations bancaires requise" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                            <small style="color: #666; font-size: 13px;">Ce message sera affiché si la progression ne va pas à 100%</small>
+                        </div>
+                    </div>
+                    
+                    <button onclick="saveTransferSettings()" class="btn btn-primary">💾 Enregistrer les paramètres</button>
+                </div>
+                
+                <div class="form-card">
+                    <h3>💸 Historique des virements internationaux</h3>
+                    <p style="color: #666; margin-bottom: 20px;">Liste de tous les virements effectués par les clients</p>
+                    <button onclick="exportTransfers()" class="btn btn-primary" style="margin-bottom: 20px;">📥 Exporter en CSV</button>
+                </div>
+                <div class="table-container">
+                    <table id="transfersTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>Montant</th>
+                                <th>Bénéficiaire</th>
+                                <th>IBAN</th>
+                                <th>Banque</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transfersTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Transactions Tab -->
+            <div id="transactionsTab" class="tab-content">
+                <div class="form-card">
+                    <h3>📊 Historique des transactions</h3>
+                    <button onclick="exportTransactions()" class="btn btn-primary" style="margin-bottom: 20px;">📥 Exporter en CSV</button>
+                </div>
+                <div class="table-container">
+                    <table id="transactionsTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Compte</th>
+                                <th>Type</th>
+                                <th>Montant</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settingsTab" class="tab-content">
+                <div class="form-card">
+                    <h3>⚙️ Paramètres du système</h3>
+                    <div id="settingsAlert" class="alert"></div>
+                    <div class="form-group">
+                        <label>Nom de l'application</label>
+                        <input type="text" id="appName" value="VANTEX" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Devise par défaut (pour les nouveaux comptes)</label>
+                        <input type="text" id="defaultCurrency" value="GNF" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                    </div>
+                    <button onclick="saveAppSettings()" class="btn btn-primary" style="margin-top: 10px;">💾 Enregistrer les paramètres</button>
+                    <button onclick="clearAllData()" class="btn btn-danger" style="background: var(--danger); margin-top: 20px;">🗑️ Réinitialiser toutes les données</button>
+                </div>
+
+                <div class="form-card">
+                    <h3>💱 Gérer les devises des comptes</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Changer la devise d'un compte spécifique :</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sélectionner le compte</label>
+                            <select id="accountCurrencySelect" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                                <option value="">-- Choisir un compte --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nouvelle devise</label>
+                            <input type="text" id="newCurrencyForAccount" placeholder="Ex: USD, EUR, GNF" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                        </div>
+                    </div>
+                    <button onclick="changeAccountCurrency()" class="btn btn-primary">💱 Changer la devise</button>
+                </div>
+
+                <div class="form-card">
+                    <h3>💱 Devises courantes (cliquez pour utiliser)</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Sélectionnez d'abord un compte ci-dessus, puis cliquez sur une devise :</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <button onclick="setQuickCurrencyForAccount('GNF')" class="btn-small btn-info">🇬🇳 GNF - Franc Guinéen</button>
+                        <button onclick="setQuickCurrencyForAccount('USD')" class="btn-small btn-info">🇺🇸 USD - Dollar</button>
+                        <button onclick="setQuickCurrencyForAccount('EUR')" class="btn-small btn-info">🇪🇺 EUR - Euro</button>
+                        <button onclick="setQuickCurrencyForAccount('XOF')" class="btn-small btn-info">🌍 XOF - Franc CFA</button>
+                        <button onclick="setQuickCurrencyForAccount('GBP')" class="btn-small btn-info">🇬🇧 GBP - Livre</button>
+                        <button onclick="setQuickCurrencyForAccount('CAD')" class="btn-small btn-info">🇨🇦 CAD - Dollar Canadien</button>
+                        <button onclick="setQuickCurrencyForAccount('CHF')" class="btn-small btn-info">🇨🇭 CHF - Franc Suisse</button>
+                        <button onclick="setQuickCurrencyForAccount('MAD')" class="btn-small btn-info">🇲🇦 MAD - Dirham</button>
+                        <button onclick="setQuickCurrencyForAccount('NGN')" class="btn-small btn-info">🇳🇬 NGN - Naira</button>
+                        <button onclick="setQuickCurrencyForAccount('ZAR')" class="btn-small btn-info">🇿🇦 ZAR - Rand</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Recharge/Edit -->
+    <div class="modal" id="rechargeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Recharger le compte</h3>
+                <button class="close-modal" onclick="closeModal('rechargeModal')">×</button>
+            </div>
+            <div id="modalAlert" class="alert"></div>
+            <form id="modalRechargeForm">
+                <div class="form-group">
+                    <label>Montant (GNF)</label>
+                    <input type="number" id="modalRechargeAmount" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Note</label>
+                    <input type="text" id="modalRechargeNote">
+                </div>
+                <button type="submit" class="btn btn-primary">Confirmer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for International Transfer -->
+    <div class="modal" id="transferModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>💸 Envoyer un virement international</h3>
+                <button class="close-modal" onclick="closeModal('transferModal')">×</button>
+            </div>
+            <div id="transferAlert" class="alert"></div>
+            <form id="transferForm">
+                <div class="form-group">
+                    <label>Montant du virement</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="transferAmount" required min="0.01" step="0.01" style="flex: 1; width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;" placeholder="0.00">
+                        <input type="text" id="transferCurrency" readonly style="width: 100px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; background: #f5f5f5; text-align: center;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nom du bénéficiaire</label>
+                    <input type="text" id="transferBeneficiary" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>IBAN / Numéro de Compte</label>
+                    <input type="text" id="transferIban" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Code Banque (BIC / SWIFT)</label>
+                    <input type="text" id="transferSwift" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Nom de la Banque</label>
+                    <input type="text" id="transferBank" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Raison du virement</label>
+                    <input type="text" id="transferReason" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;" placeholder="Ex: Paiement de facture">
+                </div>
+                
+                <div style="background: #f0f8ff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid var(--primary-blue);">
+                    <p style="margin: 0; color: #666; font-size: 14px;">
+                        <strong>Solde disponible:</strong> <span id="transferAvailableBalance">0.00</span>
+                    </p>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Continuer →</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transfer Confirmation Page -->
+    <div class="client-container" id="transferConfirmation" style="display: none;">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">🏦</div>
+                VANTEX
+            </div>
+            <div class="user-info">
+                <div class="notification-btn">🔔</div>
+                <div class="user-avatar" id="userAvatarConfirm">FK</div>
+            </div>
+        </div>
+
+        <div style="padding: 20px; max-width: 600px; margin: 0 auto;">
+            <div style="background: white; border-radius: 15px; padding: 25px; box-shadow: var(--shadow); margin-bottom: 20px;">
+                <h2 style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; color: var(--primary-blue); font-size: 20px;">
+                    🧾 Détails du virement en attente
+                </h2>
+
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 15px;">
+                    <p style="color: #666; margin-bottom: 8px; font-size: 15px;">Montant du virement :</p>
+                    <h2 style="font-size: 24px; font-weight: 700; color: var(--dark-text); margin-bottom: 20px;" id="confirmAmount">50 000,00 GNF</h2>
+                    
+                    <p style="color: #666; margin-bottom: 5px; font-size: 15px;">Nom du bénéficiaire :</p>
+                    <h3 style="font-weight: 700; margin-bottom: 20px; font-size: 18px;" id="confirmBeneficiary">AMADOU MFOCHIVE</h3>
+                    
+                    <p style="color: #666; margin-bottom: 5px; font-size: 15px;">IBAN / Numéro de Compte :</p>
+                    <h3 style="font-weight: 700; margin-bottom: 20px; font-size: 18px;" id="confirmIban">655466035</h3>
+                    
+                    <p style="color: #666; margin-bottom: 5px; font-size: 15px;">Code Banque (BIC / SWIFT) :</p>
+                    <h3 style="font-weight: 700; margin-bottom: 20px; font-size: 18px;" id="confirmSwift">Ndamcorazon77</h3>
+                    
+                    <p style="color: #666; margin-bottom: 5px; font-size: 15px;">Nom de la Banque :</p>
+                    <h3 style="font-weight: 700; margin-bottom: 20px; font-size: 18px;" id="confirmBank">Ainsi</h3>
+                    
+                    <p style="color: #666; margin-bottom: 5px; font-size: 15px;">Raison du virement :</p>
+                    <h3 style="font-weight: 700; margin-bottom: 10px; font-size: 18px;" id="confirmReason">Ainsi</h3>
+                </div>
+
+                <button onclick="cancelTransferProcess()" style="width: 100%; padding: 14px; border: 2px solid var(--danger); background: white; color: var(--danger); border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 15px;">
+                    Annuler le virement →
+                </button>
+            </div>
+
+            <div style="background: white; border-radius: 15px; padding: 25px; box-shadow: var(--shadow);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <span style="font-size: 20px;">🔒</span>
+                    <p style="margin: 0; color: #666; font-size: 15px;">Veuillez saisir le code d'activation du virement</p>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; margin-bottom: 8px;">Code d'activation</p>
+                <input type="password" id="activationCode" placeholder="********" style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; margin-bottom: 15px;">
+                
+                <button onclick="processTransfer()" class="btn btn-primary" style="width: 100%; font-size: 15px;">
+                    Confirmer et traiter le virement
+                </button>
+            </div>
+        </div>
+
+        <div style="height: 80px;"></div>
+
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="backToClientDashboard()">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Portefeuille</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">💸</div>
+                <div class="nav-label">Virement</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">💳</div>
+                <div class="nav-label">Carte virtuelle</div>
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Mon compte</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Processing Page -->
+    <div class="client-container" id="transferProcessing" style="display: none;">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">🏦</div>
+                VANTEX
+            </div>
+        </div>
+
+        <div style="padding: 20px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: var(--dark-text); font-size: 20px; padding: 20px 0; margin: 0;">Votre ordre de virement en cours...</h2>
+            
+            <div style="background: white; border-radius: 15px; padding: 30px 25px; box-shadow: var(--shadow);">
+                
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                        <span style="font-size: 20px;">👤</span>
+                        <p style="margin: 0; color: var(--dark-text); font-size: 16px;">Vérification d'identité effectuée avec succès.</p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0;">
+                        Veuillez patienter la fin du virement des fonds vers votre banque avant d'actualiser cette page.
+                    </p>
+                </div>
+                
+                <!-- Progress Bar Container -->
+                <div style="background: #e8f4fd; border: 3px solid var(--primary-blue); height: 60px; border-radius: 30px; overflow: hidden; position: relative; margin-bottom: 30px;">
+                    <div id="progressBar" style="background: var(--primary-blue); height: 100%; width: 0%; transition: width 0.8s ease; display: flex; align-items: center; justify-content: flex-start; padding-left: 25px;">
+                        <span id="progressText" style="color: white; font-weight: 700; font-size: 20px; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">0%</span>
+                    </div>
+                </div>
+                
+                <!-- Details Section -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0;">
+                        <span style="font-size: 20px;">🧾</span>
+                        <h3 style="margin: 0; color: var(--primary-blue); font-size: 16px;">Détails du virement en cours</h3>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <p style="color: #666; margin-bottom: 4px; font-size: 14px;">Montant du virement :</p>
+                        <h3 style="font-weight: 700; margin: 0; font-size: 18px;" id="processingAmount">50 000,00 GNF</h3>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <p style="color: #666; margin-bottom: 4px; font-size: 14px;">Nom du bénéficiaire :</p>
+                        <h3 style="font-weight: 700; margin: 0; font-size: 16px;" id="processingBeneficiary">AMADOU MFOCHIVE</h3>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <p style="color: #666; margin-bottom: 4px; font-size: 14px;">IBAN / Numéro de Compte :</p>
+                        <h3 style="font-weight: 700; margin: 0; font-size: 16px;" id="processingIban">655466035</h3>
+                    </div>
+                    
+                    <div>
+                        <p style="color: #666; margin-bottom: 4px; font-size: 14px;">Nom de la Banque :</p>
+                        <h3 style="font-weight: 700; margin: 0; font-size: 16px;" id="processingBank">Ainsi</h3>
+                    </div>
+                </div>
+                
+                <div id="errorMessage" style="display: none; background: #ffebee; padding: 20px; border-radius: 10px; border-left: 4px solid var(--danger);">
+                    <h3 style="color: var(--danger); margin-bottom: 10px; font-size: 16px;">❌ Échec du virement</h3>
+                    <p style="color: #666; margin: 0; font-size: 14px;" id="errorText"></p>
+                    <button onclick="backToClientDashboard()" style="margin-top: 15px; padding: 10px 20px; background: var(--danger); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        Retour au tableau de bord
+                    </button>
+                </div>
+
+                <div id="successMessage" style="display: none; background: #e8f5e9; padding: 20px; border-radius: 10px; border-left: 4px solid var(--success);">
+                    <h3 style="color: var(--success); margin-bottom: 10px; font-size: 16px;">✅ Virement réussi !</h3>
+                    <p style="color: #666; margin: 0; font-size: 14px;">Votre virement a été traité avec succès</p>
+                    <button onclick="backToClientDashboard()" style="margin-top: 15px; padding: 10px 20px; background: var(--success); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                        Retour au tableau de bord
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize localStorage
+        if (!localStorage.getItem('vantex_accounts')) {
+            localStorage.setItem('vantex_accounts', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('vantex_transactions')) {
+            localStorage.setItem('vantex_transactions', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('vantex_transfers')) {
+            localStorage.setItem('vantex_transfers', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('vantex_admin')) {
+            localStorage.setItem('vantex_admin', JSON.stringify({
+                email: 'ndamcorazon75@gmail.com',
+                password: 'Ndamcorazon77'
+            }));
+        }
+        if (!localStorage.getItem('vantex_settings')) {
+            localStorage.setItem('vantex_settings', JSON.stringify({
+                appName: 'VANTEX',
+                defaultCurrency: 'GNF'
+            }));
+        }
+        if (!localStorage.getItem('vantex_transfer_settings')) {
+            localStorage.setItem('vantex_transfer_settings', JSON.stringify({
+                autoProgress: 100,
+                autoErrorMessage: ''
+            }));
+        }
+
+        let currentUser = null;
+        let currentEditAccount = null;
+
+        // Login Form
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => 
+                (acc.email === email || acc.phone === email) && acc.password === password
+            );
+
+            if (account) {
+                if (account.status === 'blocked') {
+                    showAlert('loginAlert', 'Compte bloqué. Contactez l\'administrateur.', 'error');
+                    return;
+                }
+                currentUser = account;
+                showClientInterface();
+            } else {
+                showAlert('loginAlert', 'Email/Téléphone ou mot de passe incorrect', 'error');
+            }
+        });
+
+        function switchToAdmin() {
+            const email = prompt('Email administrateur:');
+            const password = prompt('Mot de passe:');
+            const admin = JSON.parse(localStorage.getItem('vantex_admin'));
+
+            if (email === admin.email && password === admin.password) {
+                showAdminPanel();
+            } else {
+                alert('Identifiants administrateur incorrects');
+            }
+        }
+
+        function showClientInterface() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('clientInterface').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+            
+            // Update user info
+            document.getElementById('userName').textContent = currentUser.name;
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+            document.getElementById('userAvatar').textContent = initials;
+            
+            updateClientBalance();
+            loadClientTransactions();
+        }
+
+        function showAdminPanel() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('clientInterface').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            
+            loadCurrencySettings();
+            loadTransferSettings();
+            updateDashboard();
+            loadAccountsTable();
+            loadTransfersTable();
+            loadTransactionsTable();
+            populateAccountSelects();
+        }
+
+        function updateClientBalance() {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === currentUser.email);
+            if (account) {
+                currentUser = account;
+                const currency = account.currency || 'GNF';
+                document.getElementById('clientBalance').textContent = 
+                    formatCurrency(account.balance) + ' ' + currency;
+            }
+        }
+
+        function loadClientTransactions() {
+            const transactions = JSON.parse(localStorage.getItem('vantex_transactions'));
+            const userTransactions = transactions.filter(t => t.accountEmail === currentUser.email);
+            
+            const listDiv = document.getElementById('transactionsList');
+            const currency = currentUser.currency || 'GNF';
+            
+            if (userTransactions.length === 0) {
+                listDiv.innerHTML = `
+                    <div class="no-transactions">
+                        <div class="no-transactions-icon">📋</div>
+                        <p>Aucune transaction n'a été effectuée sur votre compte.</p>
+                    </div>
+                `;
+            } else {
+                listDiv.innerHTML = userTransactions.map(t => `
+                    <div class="transaction-item">
+                        <div class="transaction-info">
+                            <h4>${t.type === 'credit' ? 'Recharge' : 'Débit'}</h4>
+                            <p class="transaction-date">${formatDate(t.date)}</p>
+                            ${t.note ? `<p class="transaction-date">${t.note}</p>` : ''}
+                        </div>
+                        <div class="transaction-amount ${t.type === 'credit' ? 'positive' : 'negative'}">
+                            ${t.type === 'credit' ? '+' : '-'}${formatCurrency(t.amount)} ${currency}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function logoutClient() {
+            if (confirm('Voulez-vous vous déconnecter ?')) {
+                currentUser = null;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('clientInterface').style.display = 'none';
+                document.getElementById('loginForm').reset();
+            }
+        }
+
+        function logoutAdmin() {
+            if (confirm('Voulez-vous vous déconnecter ?')) {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('adminPanel').style.display = 'none';
+                document.getElementById('loginForm').reset();
+            }
+        }
+
+        // Admin Functions
+        function switchTab(tabName) {
+            document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        function updateDashboard() {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const transactions = JSON.parse(localStorage.getItem('vantex_transactions'));
+            
+            const activeAccounts = accounts.filter(acc => acc.status === 'active').length;
+            
+            const today = new Date().toDateString();
+            const todayTransactions = transactions.filter(t => 
+                new Date(t.date).toDateString() === today
+            ).length;
+            
+            document.getElementById('totalAccounts').textContent = accounts.length;
+            document.getElementById('activeAccounts').textContent = activeAccounts;
+            document.getElementById('totalBalance').textContent = accounts.length + ' comptes';
+            document.getElementById('todayTransactions').textContent = todayTransactions;
+        }
+
+        document.getElementById('createAccountForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const email = document.getElementById('newAccountEmail').value;
+            
+            if (accounts.find(acc => acc.email === email)) {
+                showAlert('createAccountAlert', 'Un compte avec cet email existe déjà', 'error');
+                return;
+            }
+            
+            const settings = JSON.parse(localStorage.getItem('vantex_settings'));
+            const lastName = document.getElementById('newAccountLastName').value;
+            const firstName = document.getElementById('newAccountFirstName').value;
+            
+            // Générer un code d'activation unique VTX + 5 chiffres
+            function generateActivationCode() {
+                const digits = Math.floor(10000 + Math.random() * 90000);
+                return 'VTX' + digits;
+            }
+            let activCode = generateActivationCode();
+            // S'assurer que le code est unique
+            const allAccounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            while (allAccounts.find(a => a.activationCode === activCode)) {
+                activCode = generateActivationCode();
+            }
+
+            const newAccount = {
+                id: Date.now(),
+                lastName: lastName,
+                firstName: firstName,
+                name: firstName + ' ' + lastName,
+                email: email,
+                phone: document.getElementById('newAccountPhone').value,
+                country: document.getElementById('newAccountCountry').value,
+                password: document.getElementById('newAccountPassword').value,
+                balance: parseFloat(document.getElementById('newAccountBalance').value) || 0,
+                currency: settings.defaultCurrency || 'GNF',
+                autoProgress: parseInt(document.getElementById('newAccountProgress').value) || 100,
+                autoErrorMessage: document.getElementById('newAccountErrorMsg').value || '',
+                status: 'active',
+                activationCode: activCode,
+                createdAt: new Date().toISOString()
+            };
+            
+            accounts.push(newAccount);
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            
+            if (newAccount.balance > 0) {
+                addTransaction(newAccount.email, 'credit', newAccount.balance, 'Solde initial');
+            }
+            
+            // Afficher un message avec les informations du compte
+            const accountInfo = `
+✅ Compte créé avec succès !
+
+📧 Email: ${newAccount.email}
+🔑 Mot de passe: ${newAccount.password}
+🔐 Code d'activation: ${newAccount.activationCode}
+💰 Solde: ${formatCurrency(newAccount.balance)} ${newAccount.currency}
+📊 Progression auto: ${newAccount.autoProgress}%
+
+ℹ️ Ces informations devraient être envoyées au client par email.
+Pour l'instant, copiez-les et envoyez-les manuellement.
+            `;
+            
+            alert(accountInfo);
+            showAlert('createAccountAlert', 'Compte créé avec succès !', 'success');
+            this.reset();
+            loadAccountsTable();
+            updateDashboard();
+            populateAccountSelects();
+        });
+
+        function loadAccountsTable() {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const tbody = document.getElementById('accountsTableBody');
+            
+            tbody.innerHTML = accounts.map(acc => {
+                const currency = acc.currency || 'GNF';
+                const progress = acc.autoProgress !== undefined ? acc.autoProgress : 100;
+                return `
+                    <tr>
+                        <td>${acc.name}</td>
+                        <td>${acc.email}</td>
+                        <td>${acc.phone}</td>
+                        <td>${acc.country || '-'}</td>
+                        <td>${formatCurrency(acc.balance)} ${currency}</td>
+                        <td><span class="status-badge ${progress === 100 ? 'status-active' : 'status-blocked'}">${progress}%</span></td>
+                        <td><span class="status-badge status-${acc.status}">${acc.status === 'active' ? 'Actif' : 'Bloqué'}</span></td>
+                        <td><strong style="color: #e74c3c; font-family: monospace;">${acc.activationCode || 'N/A'}</strong></td>
+                        <td class="action-buttons-admin">
+                            <button class="btn-small btn-success" onclick="quickRecharge(${acc.id})">💰</button>
+                            <button class="btn-small btn-info" onclick="editAccountProgress(${acc.id})">📊</button>
+                            <button class="btn-small btn-info" onclick
+                            <button class="btn-small btn-warning" onclick="toggleBlockAccount(${acc.id})">
+                                ${acc.status === 'active' ? '🔒' : '🔓'}
+                            </button>
+                            <button class="btn-small btn-danger" onclick="deleteAccount(${acc.id})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function editAccountProgress(accountId) {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.id === accountId);
+            
+            const newProgress = prompt(`Modifier la progression pour ${account.name}\nNouvelle progression (0-100%):`, account.autoProgress || 100);
+            
+            if (newProgress === null) return;
+            
+            const progress = parseInt(newProgress);
+            if (isNaN(progress) || progress < 0 || progress > 100) {
+                alert('La progression doit être entre 0 et 100');
+                return;
+            }
+            
+            account.autoProgress = progress;
+            
+            if (progress < 100) {
+                const errorMsg = prompt('Message d\'erreur pour ce compte (si échec):');
+                account.autoErrorMessage = errorMsg || '';
+            }
+            
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            loadAccountsTable();
+            alert('Progression mise à jour avec succès !');
+        }
+
+        function quickRecharge(accountId) {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.id === accountId);
+            const currency = account.currency || 'GNF';
+            
+            const amount = prompt(`Recharger ${account.name}\nMontant (${currency}):`);
+            if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
+                account.balance += parseFloat(amount);
+                localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+                addTransaction(account.email, 'credit', parseFloat(amount), 'Recharge administrateur');
+                loadAccountsTable();
+                updateDashboard();
+                alert('Recharge effectuée avec succès !');
+            }
+        }
+
+        function toggleBlockAccount(accountId) {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.id === accountId);
+            
+            account.status = account.status === 'active' ? 'blocked' : 'active';
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            loadAccountsTable();
+            updateDashboard();
+        }
+
+        function deleteAccount(accountId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce compte ?')) return;
+            
+            let accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            accounts = accounts.filter(acc => acc.id !== accountId);
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            loadAccountsTable();
+            updateDashboard();
+            populateAccountSelects();
+        }
+
+        function populateAccountSelects() {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const activeAccounts = accounts.filter(acc => acc.status === 'active');
+            
+            const options = activeAccounts.map(acc => {
+                const currency = acc.currency || 'GNF';
+                return `<option value="${acc.email}">${acc.name} - ${currency}</option>`;
+            }).join('');
+            
+            document.getElementById('rechargeAccountSelect').innerHTML = 
+                '<option value="">-- Choisir un compte --</option>' + options;
+            document.getElementById('debitAccountSelect').innerHTML = 
+                '<option value="">-- Choisir un compte --</option>' + options;
+        }
+
+        document.getElementById('rechargeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('rechargeAccountSelect').value;
+            const amount = parseFloat(document.getElementById('rechargeAmount').value);
+            const note = document.getElementById('rechargeNote').value;
+            
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === email);
+            
+            account.balance += amount;
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            addTransaction(email, 'credit', amount, note || 'Recharge');
+            
+            showAlert('rechargeAlert', 'Recharge effectuée avec succès !', 'success');
+            this.reset();
+            loadAccountsTable();
+            updateDashboard();
+            loadTransactionsTable();
+        });
+
+        document.getElementById('debitForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('debitAccountSelect').value;
+            const amount = parseFloat(document.getElementById('debitAmount').value);
+            const note = document.getElementById('debitNote').value;
+            
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === email);
+            
+            if (account.balance < amount) {
+                showAlert('debitAlert', 'Solde insuffisant !', 'error');
+                return;
+            }
+            
+            account.balance -= amount;
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            addTransaction(email, 'debit', amount, note || 'Débit');
+            
+            showAlert('debitAlert', 'Débit effectué avec succès !', 'success');
+            this.reset();
+            loadAccountsTable();
+            updateDashboard();
+            loadTransactionsTable();
+        });
+
+        function addTransaction(accountEmail, type, amount, note) {
+            const transactions = JSON.parse(localStorage.getItem('vantex_transactions'));
+            transactions.push({
+                id: Date.now(),
+                accountEmail: accountEmail,
+                type: type,
+                amount: amount,
+                note: note,
+                date: new Date().toISOString()
+            });
+            localStorage.setItem('vantex_transactions', JSON.stringify(transactions));
+        }
+
+        function loadTransactionsTable() {
+            const transactions = JSON.parse(localStorage.getItem('vantex_transactions'));
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const tbody = document.getElementById('transactionsTableBody');
+            
+            const sorted = transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            tbody.innerHTML = sorted.map(t => {
+                const account = accounts.find(acc => acc.email === t.accountEmail);
+                const currency = account ? (account.currency || 'GNF') : 'GNF';
+                return `
+                    <tr>
+                        <td>${formatDate(t.date)}</td>
+                        <td>${account ? account.name : t.accountEmail}</td>
+                        <td><span class="status-badge ${t.type === 'credit' ? 'status-active' : 'status-blocked'}">
+                            ${t.type === 'credit' ? 'Crédit' : 'Débit'}
+                        </span></td>
+                        <td>${formatCurrency(t.amount)} ${currency}</td>
+                        <td>${t.note || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function saveTransferSettings() {
+            const settings = {
+                autoProgress: parseInt(document.getElementById('autoProgress').value) || 100,
+                autoErrorMessage: document.getElementById('autoErrorMessage').value || ''
+            };
+            
+            localStorage.setItem('vantex_transfer_settings', JSON.stringify(settings));
+            alert('Paramètres enregistrés ! Ils s\'appliqueront aux prochains virements.');
+        }
+
+        function loadTransferSettings() {
+            const settings = JSON.parse(localStorage.getItem('vantex_transfer_settings'));
+            document.getElementById('autoProgress').value = settings.autoProgress;
+            document.getElementById('autoErrorMessage').value = settings.autoErrorMessage;
+        }
+
+        function exportTransfers() {
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            
+            let csv = 'Date,Client,Email,Montant,Devise,Bénéficiaire,IBAN,SWIFT,Banque,Raison,Statut\n';
+            transfers.forEach(t => {
+                const account = accounts.find(acc => acc.email === t.accountEmail);
+                csv += `${formatDate(t.date)},${account ? account.name : ''},${t.accountEmail},${t.amount},${t.currency},"${t.beneficiary}","${t.iban}","${t.swift}","${t.bank}","${t.reason}",${t.status}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `virements_vantex_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function loadTransfersTable() {
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const tbody = document.getElementById('transfersTableBody');
+            
+            if (transfers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                            Aucun virement n'a été effectué
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const sorted = transfers.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            tbody.innerHTML = sorted.map(t => {
+                const account = accounts.find(acc => acc.email === t.accountEmail);
+                const statusClass = t.status === 'completed' ? 'status-active' : 
+                                   t.status === 'processing' ? 'status-badge' :
+                                   t.status === 'failed' ? 'status-blocked' : 'status-badge';
+                const statusText = t.status === 'completed' ? 'Complété' : 
+                                  t.status === 'processing' ? `En traitement (${t.progress || 0}%)` :
+                                  t.status === 'failed' ? 'Échoué' : 'En attente';
+                
+                return `
+                    <tr>
+                        <td>${formatDate(t.date)}</td>
+                        <td>${account ? account.name : t.accountEmail}</td>
+                        <td>${formatCurrency(t.amount)} ${t.currency}</td>
+                        <td>${t.beneficiary}</td>
+                        <td>${t.iban}</td>
+                        <td>${t.bank}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td class="action-buttons-admin">
+                            ${t.status === 'processing' ? `
+                                <input type="number" id="progress_${t.id}" min="0" max="100" value="${t.progress || 0}" 
+                                    style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" 
+                                    placeholder="%">
+                                <button class="btn-small btn-info" onclick="updateProgress(${t.id})">📊 Mettre à jour</button>
+                                <button class="btn-small btn-danger" onclick="failTransfer(${t.id})">❌ Échec</button>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateProgress(transferId) {
+            const progressInput = document.getElementById(`progress_${transferId}`);
+            const newProgress = parseInt(progressInput.value);
+            
+            if (isNaN(newProgress) || newProgress < 0 || newProgress > 100) {
+                alert('La progression doit être entre 0 et 100');
+                return;
+            }
+            
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const transfer = transfers.find(t => t.id === transferId);
+            
+            if (transfer) {
+                transfer.progress = newProgress;
+                
+                // Si la progression atteint 100%, marquer comme complété
+                if (newProgress === 100) {
+                    transfer.status = 'completed';
+                }
+                
+                localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+                loadTransfersTable();
+                alert(`Progression mise à jour: ${newProgress}%`);
+            }
+        }
+
+        function failTransfer(transferId) {
+            const errorMessage = prompt('Message d\'erreur à afficher au client:');
+            
+            if (!errorMessage) {
+                alert('Veuillez entrer un message d\'erreur');
+                return;
+            }
+            
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const transfer = transfers.find(t => t.id === transferId);
+            
+            if (transfer) {
+                transfer.status = 'failed';
+                transfer.errorMessage = errorMessage;
+                localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+                
+                // Rembourser le client
+                const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+                const account = accounts.find(acc => acc.email === transfer.accountEmail);
+                if (account) {
+                    account.balance += transfer.amount;
+                    localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+                    
+                    // Ajouter une transaction de remboursement
+                    addTransaction(transfer.accountEmail, 'credit', transfer.amount, 'Remboursement: ' + errorMessage);
+                }
+                
+                loadTransfersTable();
+                alert('Virement marqué comme échoué et client remboursé');
+            }
+        }
+
+        function exportTransactions() {
+            const transactions = JSON.parse(localStorage.getItem('vantex_transactions'));
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            
+            let csv = 'Date,Compte,Email,Type,Montant,Note\n';
+            transactions.forEach(t => {
+                const account = accounts.find(acc => acc.email === t.accountEmail);
+                csv += `${formatDate(t.date)},${account ? account.name : ''},${t.accountEmail},${t.type},${t.amount},"${t.note || ''}"\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `transactions_vantex_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function clearAllData() {
+            if (!confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les données (comptes, transactions). Continuer ?')) return;
+            if (!confirm('Êtes-vous ABSOLUMENT sûr ? Cette action est irréversible !')) return;
+            
+            localStorage.setItem('vantex_accounts', JSON.stringify([]));
+            localStorage.setItem('vantex_transactions', JSON.stringify([]));
+            
+            alert('Toutes les données ont été supprimées !');
+            location.reload();
+        }
+
+        // Utility Functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-FR').format(amount);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function saveAppSettings() {
+            const settings = {
+                appName: document.getElementById('appName').value || 'VANTEX',
+                defaultCurrency: document.getElementById('defaultCurrency').value.toUpperCase() || 'GNF'
+            };
+            
+            localStorage.setItem('vantex_settings', JSON.stringify(settings));
+            showAlert('settingsAlert', 'Paramètres enregistrés avec succès !', 'success');
+        }
+
+        function changeAccountCurrency() {
+            const accountEmail = document.getElementById('accountCurrencySelect').value;
+            const newCurrency = document.getElementById('newCurrencyForAccount').value.trim().toUpperCase();
+            
+            if (!accountEmail) {
+                showAlert('settingsAlert', 'Veuillez sélectionner un compte', 'error');
+                return;
+            }
+            
+            if (!newCurrency) {
+                showAlert('settingsAlert', 'Veuillez entrer une devise', 'error');
+                return;
+            }
+            
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === accountEmail);
+            
+            if (account) {
+                account.currency = newCurrency;
+                localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+                showAlert('settingsAlert', `Devise changée avec succès pour ${account.name} → ${newCurrency}`, 'success');
+                loadAccountsTable();
+                loadTransactionsTable();
+                
+                // Si le client est connecté, mettre à jour son affichage
+                if (currentUser && currentUser.email === accountEmail) {
+                    updateClientBalance();
+                    loadClientTransactions();
+                }
+            }
+        }
+
+        function setQuickCurrencyForAccount(currency) {
+            const accountEmail = document.getElementById('accountCurrencySelect').value;
+            
+            if (!accountEmail) {
+                showAlert('settingsAlert', 'Veuillez d\'abord sélectionner un compte ci-dessus', 'error');
+                return;
+            }
+            
+            document.getElementById('newCurrencyForAccount').value = currency;
+            changeAccountCurrency();
+        }
+
+        function populateAccountCurrencySelect() {
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const select = document.getElementById('accountCurrencySelect');
+            
+            if (select) {
+                select.innerHTML = '<option value="">-- Choisir un compte --</option>' +
+                    accounts.map(acc => 
+                        `<option value="${acc.email}">${acc.name} - ${acc.email} (${acc.currency || 'GNF'})</option>`
+                    ).join('');
+            }
+        }
+
+        function loadCurrencySettings() {
+            const settings = JSON.parse(localStorage.getItem('vantex_settings'));
+            const appNameInput = document.getElementById('appName');
+            const defaultCurrencyInput = document.getElementById('defaultCurrency');
+            
+            if (appNameInput) appNameInput.value = settings.appName;
+            if (defaultCurrencyInput) defaultCurrencyInput.value = settings.defaultCurrency;
+            
+            populateAccountCurrencySelect();
+        }
+
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert alert-${type === 'error' ? 'error' : 'success'} show`;
+            alert.textContent = message;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        let pendingTransferData = null;
+
+        function showIban() {
+            alert('Fonctionnalité IBAN à venir');
+        }
+
+        function openTransferModal() {
+            const currency = currentUser.currency || 'GNF';
+            document.getElementById('transferCurrency').value = currency;
+            document.getElementById('transferAvailableBalance').textContent = 
+                formatCurrency(currentUser.balance) + ' ' + currency;
+            
+            document.getElementById('transferModal').classList.add('active');
+        }
+
+        document.getElementById('transferForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+            const beneficiary = document.getElementById('transferBeneficiary').value;
+            const iban = document.getElementById('transferIban').value;
+            const swift = document.getElementById('transferSwift').value;
+            const bank = document.getElementById('transferBank').value;
+            const reason = document.getElementById('transferReason').value;
+            
+            // Vérifier le solde
+            if (amount > currentUser.balance) {
+                showAlert('transferAlert', 'Solde insuffisant pour effectuer ce virement', 'error');
+                return;
+            }
+            
+            if (amount <= 0) {
+                showAlert('transferAlert', 'Le montant doit être supérieur à 0', 'error');
+                return;
+            }
+            
+            // Sauvegarder les données temporairement
+            pendingTransferData = {
+                amount: amount,
+                currency: currentUser.currency || 'GNF',
+                beneficiary: beneficiary,
+                iban: iban,
+                swift: swift,
+                bank: bank,
+                reason: reason
+            };
+            
+            // Afficher la page de confirmation
+            showTransferConfirmation();
+        });
+
+        function showTransferConfirmation() {
+            // Fermer le modal
+            closeModal('transferModal');
+            
+            // Masquer l'interface client normale
+            document.getElementById('clientInterface').style.display = 'none';
+            
+            // Afficher la page de confirmation
+            document.getElementById('transferConfirmation').style.display = 'block';
+            
+            // Remplir les détails
+            const currency = pendingTransferData.currency;
+            document.getElementById('confirmAmount').textContent = 
+                formatCurrency(pendingTransferData.amount) + ' ' + currency;
+            document.getElementById('confirmBeneficiary').textContent = pendingTransferData.beneficiary;
+            document.getElementById('confirmIban').textContent = pendingTransferData.iban;
+            document.getElementById('confirmSwift').textContent = pendingTransferData.swift;
+            document.getElementById('confirmBank').textContent = pendingTransferData.bank;
+            document.getElementById('confirmReason').textContent = pendingTransferData.reason;
+            
+            // Mettre à jour l'avatar
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+            document.getElementById('userAvatarConfirm').textContent = initials;
+        }
+
+        function cancelTransferProcess() {
+            if (confirm('Êtes-vous sûr de vouloir annuler ce virement ?')) {
+                pendingTransferData = null;
+                document.getElementById('activationCode').value = '';
+                backToClientDashboard();
+            }
+        }
+
+        function backToClientDashboard() {
+            document.getElementById('transferConfirmation').style.display = 'none';
+            document.getElementById('transferProcessing').style.display = 'none';
+            document.getElementById('clientInterface').style.display = 'block';
+            document.getElementById('transferForm').reset();
+            pendingTransferData = null;
+        }
+
+        function processTransfer() {
+            const activationCode = document.getElementById('activationCode').value.trim();
+            
+            if (!activationCode) {
+                alert('Veuillez entrer le code d\'activation');
+                return;
+            }
+            
+            // Débiter le compte
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === currentUser.email);
+            account.balance -= pendingTransferData.amount;
+            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            
+            // Enregistrer la transaction
+            const transferNote = `Virement à ${pendingTransferData.beneficiary} (${pendingTransferData.bank})`;
+            addTransaction(currentUser.email, 'debit', pendingTransferData.amount, transferNote);
+            
+            // Enregistrer les détails du virement avec code d'activation
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const transferId = Date.now();
+            transfers.push({
+                id: transferId,
+                accountEmail: currentUser.email,
+                amount: pendingTransferData.amount,
+                currency: pendingTransferData.currency,
+                beneficiary: pendingTransferData.beneficiary,
+                iban: pendingTransferData.iban,
+                swift: pendingTransferData.swift,
+                bank: pendingTransferData.bank,
+                reason: pendingTransferData.reason,
+                activationCode: activationCode,
+                date: new Date().toISOString(),
+                status: 'processing',
+                progress: 0,
+                errorMessage: null
+            });
+            localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+            
+            // Passer à l'écran de traitement
+            document.getElementById('transferConfirmation').style.display = 'none';
+            document.getElementById('transferProcessing').style.display = 'block';
+            
+            // Remplir les détails sur la page de traitement
+            const currency = pendingTransferData.currency;
+            document.getElementById('processingAmount').textContent = 
+                formatCurrency(pendingTransferData.amount) + ' ' + currency;
+            document.getElementById('processingBeneficiary').textContent = pendingTransferData.beneficiary;
+            document.getElementById('processingIban').textContent = pendingTransferData.iban;
+            document.getElementById('processingBank').textContent = pendingTransferData.bank;
+            
+            // Démarrer la surveillance de la progression
+            startProgressMonitoring(transferId);
+        }
+
+        let progressInterval = null;
+        
+        function startProgressMonitoring(transferId) {
+            // Réinitialiser l'affichage
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0%';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            
+            // Récupérer les paramètres du compte spécifique
+            const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+            const transfer = transfers.find(t => t.id === transferId);
+            
+            if (!transfer) return;
+            
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            const account = accounts.find(acc => acc.email === transfer.accountEmail);
+            
+            const targetProgress = account.autoProgress !== undefined ? account.autoProgress : 100;
+            const errorMessage = account.autoErrorMessage || 'Une erreur est survenue';
+            
+            let currentProgress = 0;
+            
+            // Incrémenter progressivement de 1% toutes les 2-3 secondes
+            const progressTimer = setInterval(() => {
+                if (currentProgress < targetProgress) {
+                    currentProgress++;
+                    transfer.progress = currentProgress;
+                    localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+                } else {
+                    clearInterval(progressTimer);
+                    
+                    // Marquer comme complété ou échoué
+                    if (targetProgress === 100) {
+                        transfer.status = 'completed';
+                    } else {
+                        transfer.status = 'failed';
+                        transfer.errorMessage = errorMessage;
+                        
+                        // Rembourser le client
+                        const account = accounts.find(acc => acc.email === transfer.accountEmail);
+                        if (account) {
+                            account.balance += transfer.amount;
+                            localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+                            addTransaction(transfer.accountEmail, 'credit', transfer.amount, 'Remboursement: ' + errorMessage);
+                        }
+                    }
+                    
+                    localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+                }
+            }, 2500); // 2.5 secondes entre chaque pourcentage
+            
+            // Vérifier et afficher la progression toutes les 500ms
+            progressInterval = setInterval(() => {
+                const updatedTransfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+                const updatedTransfer = updatedTransfers.find(t => t.id === transferId);
+                
+                if (updatedTransfer) {
+                    const progress = updatedTransfer.progress || 0;
+                    
+                    // Mettre à jour la barre de progression
+                    document.getElementById('progressBar').style.width = progress + '%';
+                    document.getElementById('progressText').textContent = progress + '%';
+                    
+                    // Vérifier si le virement est terminé
+                    if (updatedTransfer.status === 'completed' && progress === 100) {
+                        clearInterval(progressInterval);
+                        clearInterval(progressTimer);
+                        document.getElementById('successMessage').style.display = 'block';
+                    } else if (updatedTransfer.status === 'failed') {
+                        clearInterval(progressInterval);
+                        clearInterval(progressTimer);
+                        document.getElementById('errorMessage').style.display = 'block';
+                        document.getElementById('errorText').textContent = updatedTransfer.errorMessage || 'Une erreur est survenue lors du traitement';
+                    }
+                }
+            }, 500);
+        }
+
+        function showVirtualCard() {
+            alert('Fonctionnalité Carte Virtuelle à venir');
+        }
+
+        // Initialize
+        if (localStorage.getItem('vantex_accounts') === '[]') {
+            // Create demo account
+            const demoAccount = {
+                id: Date.now(),
+                lastName: 'KARAMO',
+                firstName: 'FOFANA',
+                name: 'FOFANA KARAMO',
+                email: 'demo@vantex.com',
+                phone: '+224 123 456 789',
+                country: 'Guinée',
+                password: 'demo123',
+                balance: 0,
+                currency: 'GNF',
+                autoProgress: 100,
+                autoErrorMessage: '',
+                status: 'active',
+                createdAt: new Date().toISOString()
+            };
+            localStorage.setItem('vantex_accounts', JSON.stringify([demoAccount]));
+        } else {
+            // Ajouter les nouveaux champs aux comptes existants
+            const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+            let updated = false;
+            accounts.forEach(acc => {
+                if (!acc.currency) {
+                    acc.currency = 'GNF';
+                    updated = true;
+                }
+                if (acc.autoProgress === undefined) {
+                    acc.autoProgress = 100;
+                    updated = true;
+                }
+                if (!acc.autoErrorMessage) {
+                    acc.autoErrorMessage = '';
+                    updated = true;
+                }
+                if (!acc.country) {
+                    acc.country = '';
+                    updated = true;
+                }
+                if (!acc.firstName && acc.name) {
+                    const nameParts = acc.name.split(' ');
+                    acc.firstName = nameParts[0] || '';
+                    acc.lastName = nameParts.slice(1).join(' ') || '';
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+            }
+        }
+   script>
+// ============================================
+// MODULE FRAIS DE TRANSACTION - VANTEX
+// ============================================
+(function() {
+    // Initialiser les frais dans les settings
+    const existingSettings = JSON.parse(localStorage.getItem('vantex_transfer_settings') || '{}');
+    if (!existingSettings.transactionFeePercent) {
+        existingSettings.transactionFeePercent = 2;
+        localStorage.setItem('vantex_transfer_settings', JSON.stringify(existingSettings));
+    }
+})();
+
+// OVERRIDE saveTransferSettings
+window.saveTransferSettings = function() {
+    const settings = {
+        autoProgress: parseInt(document.getElementById('autoProgress').value) || 100,
+        autoErrorMessage: document.getElementById('autoErrorMessage').value || '',
+        transactionFeePercent: parseFloat(document.getElementById('transactionFeePercent')?.value) || 0
+    };
+    
+    localStorage.setItem('vantex_transfer_settings', JSON.stringify(settings));
+    alert('✅ Paramètres enregistrés !\n\nFrais de transaction : ' + settings.transactionFeePercent + '%\nCes paramètres s\'appliqueront aux prochains virements.');
+};
+
+// OVERRIDE loadTransferSettings
+const originalLoadTransferSettings = window.loadTransferSettings;
+window.loadTransferSettings = function() {
+    if (originalLoadTransferSettings) originalLoadTransferSettings();
+    const settings = JSON.parse(localStorage.getItem('vantex_transfer_settings'));
+    const feeInput = document.getElementById('transactionFeePercent');
+    if (feeInput) {
+        feeInput.value = settings.transactionFeePercent || 2;
+    }
+};
+
+// OVERRIDE openTransferModal
+const originalOpenTransferModal = window.openTransferModal;
+window.openTransferModal = function() {
+    if (originalOpenTransferModal) originalOpenTransferModal();
+    
+    setTimeout(function() {
+        const amountInput = document.getElementById('transferAmount');
+        if (amountInput) {
+            const newInput = amountInput.cloneNode(true);
+            amountInput.parentNode.replaceChild(newInput, amountInput);
+            
+            newInput.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                
+                if (amount > 0 && window.currentUser) {
+                    const settings = JSON.parse(localStorage.getItem('vantex_transfer_settings'));
+                    const feePercent = settings.transactionFeePercent || 0;
+                    const feeAmount = (amount * feePercent) / 100;
+                    const totalAmount = amount + feeAmount;
+                    const currency = window.currentUser.currency || 'GNF';
+                    
+                    let feeCalc = document.getElementById('feeCalculation');
+                    if (!feeCalc) {
+                        const balanceDiv = document.getElementById('transferAvailableBalance')?.parentElement;
+                        if (balanceDiv) {
+                            feeCalc = document.createElement('div');
+                            feeCalc.id = 'feeCalculation';
+                            feeCalc.style.cssText = 'display: none; padding-top: 12px; border-top: 1px solid #d0e8ff; margin-top: 12px;';
+                            feeCalc.innerHTML = `
+                                <p style="margin: 4px 0; color: #666; font-size: 13px;">
+                                    <strong>Montant du virement:</strong> <span id="transferBaseAmount">0.00</span>
+                                </p>
+                                <p style="margin: 4px 0; color: #666; font-size: 13px;">
+                                    <strong>Frais (<span id="feePercentDisplay">0</span>%):</strong> <span id="transferFeeAmount">0.00</span>
+                                </p>
+                                <p style="margin: 8px 0 4px 0; color: var(--primary-blue); font-size: 15px; font-weight: 700;">
+                                    <strong>💰 TOTAL À DÉBITER:</strong> <span id="transferTotalAmount">0.00</span>
+                                </p>
+                            `;
+                            balanceDiv.appendChild(feeCalc);
+                        }
+                    }
+                    
+                    if (feeCalc) {
+                        feeCalc.style.display = 'block';
+                        document.getElementById('feePercentDisplay').textContent = feePercent;
+                        document.getElementById('transferBaseAmount').textContent = window.formatCurrency(amount) + ' ' + currency;
+                        document.getElementById('transferFeeAmount').textContent = window.formatCurrency(feeAmount) + ' ' + currency;
+                        document.getElementById('transferTotalAmount').textContent = window.formatCurrency(totalAmount) + ' ' + currency;
+                    }
+                } else {
+                    const feeCalc = document.getElementById('feeCalculation');
+                    if (feeCalc) feeCalc.style.display = 'none';
+                }
+            });
+        }
+    }, 200);
+};
+
+// OVERRIDE showTransferConfirmation
+const originalShowTransferConfirmation = window.showTransferConfirmation;
+window.showTransferConfirmation = function() {
+    if (originalShowTransferConfirmation) originalShowTransferConfirmation();
+    
+    if (window.pendingTransferData) {
+        const currency = window.pendingTransferData.currency;
+        const settings = JSON.parse(localStorage.getItem('vantex_transfer_settings'));
+        const feePercent = settings.transactionFeePercent || 0;
+        const feeAmount = (window.pendingTransferData.amount * feePercent) / 100;
+        const totalAmount = window.pendingTransferData.amount + feeAmount;
+        
+        let amountDisplay = window.formatCurrency(window.pendingTransferData.amount) + ' ' + currency;
+        if (feeAmount > 0) {
+            amountDisplay += '<br><small style="color: #666; font-size: 14px;">+ Frais (' + feePercent + '%) : ' + 
+                             window.formatCurrency(feeAmount) + ' ' + currency + '</small>' +
+                             '<br><strong style="color: var(--primary-blue); font-size: 22px;">Total : ' + 
+                             window.formatCurrency(totalAmount) + ' ' + currency + '</strong>';
+        }
+        
+        const confirmAmountEl = document.getElementById('confirmAmount');
+        if (confirmAmountEl) {
+            confirmAmountEl.innerHTML = amountDisplay;
+        }
+    }
+};
+
+// OVERRIDE processTransfer
+const originalProcessTransfer = window.processTransfer;
+window.processTransfer = function() {
+    const activationCode = document.getElementById('activationCode').value.trim();
+    
+    if (!activationCode) {
+        alert('Veuillez entrer le code d\'activation');
+        return;
+    }
+    
+    if (!window.pendingTransferData || !window.currentUser) {
+        alert('Erreur: Données du virement manquantes');
+        return;
+    }
+    
+    const settings = JSON.parse(localStorage.getItem('vantex_transfer_settings'));
+    const feePercent = settings.transactionFeePercent || 0;
+    const feeAmount = (window.pendingTransferData.amount * feePercent) / 100;
+    const totalAmount = window.pendingTransferData.amount + feeAmount;
+    
+    if (window.currentUser.balance < totalAmount) {
+        alert('Solde insuffisant !\nVous avez besoin de ' + window.formatCurrency(totalAmount) + ' ' + (window.currentUser.currency || 'GNF') + ' (montant + frais)');
+        return;
+    }
+    
+    const accounts = JSON.parse(localStorage.getItem('vantex_accounts'));
+    const account = accounts.find(acc => acc.email === window.currentUser.email);
+    account.balance -= totalAmount;
+    localStorage.setItem('vantex_accounts', JSON.stringify(accounts));
+    
+    const transferNote = `Virement à ${window.pendingTransferData.beneficiary} (${window.pendingTransferData.bank})`;
+    window.addTransaction(window.currentUser.email, 'debit', window.pendingTransferData.amount, transferNote);
+    
+    if (feeAmount > 0) {
+        window.addTransaction(window.currentUser.email, 'debit', feeAmount, 'Frais de virement (' + feePercent + '%)');
+    }
+    
+    const transfers = JSON.parse(localStorage.getItem('vantex_transfers') || '[]');
+    const transferId = Date.now();
+    transfers.push({
+        id: transferId,
+        accountEmail: window.currentUser.email,
+        amount: window.pendingTransferData.amount,
+        feeAmount: feeAmount,
+        feePercent: feePercent,
+        totalAmount: totalAmount,
+        currency: window.pendingTransferData.currency,
+        beneficiary: window.pendingTransferData.beneficiary,
+        iban: window.pendingTransferData.iban,
+        swift: window.pendingTransferData.swift,
+        bank: window.pendingTransferData.bank,
+        reason: window.pendingTransferData.reason,
+        activationCode: activationCode,
+        date: new Date().toISOString(),
+        status: 'processing',
+        progress: 0,
+        errorMessage: null
+    });
+    localStorage.setItem('vantex_transfers', JSON.stringify(transfers));
+    
+    document.getElementById('transferConfirmation').style.display = 'none';
+    document.getElementById('transferProcessing').style.display = 'block';
+    
+    const currency = window.pendingTransferData.currency;
+    document.getElementById('processingAmount').textContent = window.formatCurrency(window.pendingTransferData.amount) + ' ' + currency;
+    document.getElementById('processingBeneficiary').textContent = window.pendingTransferData.beneficiary;
+    document.getElementById('processingIban').textContent = window.pendingTransferData.iban;
+    document.getElementById('processingBank').textContent = window.pendingTransferData.bank;
+    
+    window.startProgressMonitoring(transferId);
+};
+
+console.log('✅ Module Frais de Transaction chargé');
+console.log('💰 Frais: ' + (JSON.parse(localStorage.getItem('vantex_transfer_settings')).transactionFeePercent || 2) + '%');
+</script>
+</script>
+<script>
+function generateCardNumber(){const p='4532';let n=p;for(let i=0;i<12;i++)n+=Math.floor(Math.random()*10);return n.match(/.{1,4}/g).join(' ')}function generateExpirationDate(){const now=new Date();const y=now.getFullYear()+Math.floor(Math.random()*3)+2;const m=Math.floor(Math.random()*12)+1;return(m<10?'0':'')+m+'/'+y.toString().slice(-2)}function generateCVV(){return Math.floor(Math.random()*900)+100}function initializeVirtualCards(){const accounts=JSON.parse(localStorage.getItem('vantex_accounts')||'[]');let updated=false;accounts.forEach(account=>{if(!account.virtualCard){account.virtualCard={number:generateCardNumber(),expiration:generateExpirationDate(),cvv:generateCVV(),createdAt:new Date().toISOString()};updated=true}});if(updated){localStorage.setItem('vantex_accounts',JSON.stringify(accounts))}}function showVirtualCard(){const modal=document.createElement('div');modal.className='modal active';modal.id='virtualCardModal';const card=currentUser.virtualCard||{number:generateCardNumber(),expiration:generateExpirationDate(),cvv:generateCVV()};modal.innerHTML=`<div class="modal-content" style="max-width:450px"><div class="modal-header"><h3>💳 Ma Carte Virtuelle</h3><button class="close-modal" onclick="closeModal('virtualCardModal')">×</button></div><div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:15px;color:white;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,0.3)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px"><div style="font-size:24px;font-weight:700">VANTEX</div><div style="font-size:20px">💳</div></div><div style="font-size:22px;font-weight:600;letter-spacing:3px;margin-bottom:25px;font-family:'Courier New',monospace">${card.number}</div><div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font-size:10px;opacity:0.8;margin-bottom:5px">TITULAIRE</div><div style="font-size:16px;font-weight:600">${currentUser.name.toUpperCase()}</div></div><div style="text-align:right"><div style="font-size:10px;opacity:0.8;margin-bottom:5px">EXPIRE FIN</div><div style="font-size:16px;font-weight:600">${card.expiration}</div></div></div></div><div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:15px"><div style="display:flex;justify-content:space-between;margin-bottom:15px"><div><p style="color:#666;font-size:13px;margin-bottom:5px">Numéro de carte</p><p style="font-weight:600;font-size:16px;margin:0;font-family:'Courier New',monospace">${card.number}</p></div><button onclick="copyToClipboard('${card.number.replace(/ /g,'')}')" style="padding:8px 15px;background:var(--primary-blue);color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px">📋 Copier</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:15px"><div><p style="color:#666;font-size:13px;margin-bottom:5px">Date d'expiration</p><p style="font-weight:600;font-size:16px;margin:0">${card.expiration}</p></div><div><p style="color:#666;font-size:13px;margin-bottom:5px">CVV</p><p style="font-weight:600;font-size:16px;margin:0">${card.cvv}</p></div></div></div><div style="background:#fff3cd;padding:15px;border-radius:10px;border-left:4px solid #ffc107"><p style="margin:0;color:#856404;font-size:13px">⚠️ Ne partagez jamais vos informations.</p></div><button onclick="closeModal('virtualCardModal')" class="btn btn-primary" style="margin-top:15px">Fermer</button></div>`;document.body.appendChild(modal)}function copyToClipboard(text){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);alert('✅ Copié!')}function editVirtualCard(accountId){const accounts=JSON.parse(localStorage.getItem('vantex_accounts'));const account=accounts.find(acc=>acc.id===accountId);if(!account)return;const card=account.virtualCard||{number:generateCardNumber(),expiration:generateExpirationDate(),cvv:generateCVV()};const modal=document.createElement('div');modal.className='modal active';modal.id='editCardModal';modal.innerHTML=`<div class="modal-content"><div class="modal-header"><h3>💳 Carte de ${account.name}</h3><button class="close-modal" onclick="closeEditCardModal()">×</button></div><form onsubmit="saveVirtualCard(${accountId});return false"><div class="form-group"><label>Numéro de carte</label><input type="text" id="cardNumber" value="${card.number}" maxlength="19" style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px"><button type="button" onclick="document.getElementById('cardNumber').value=generateCardNumber()" style="margin-top:8px;padding:8px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer">🎲 Générer</button></div><div class="form-row"><div class="form-group"><label>Expiration (MM/AA)</label><input type="text" id="cardExpiration" value="${card.expiration}" maxlength="5" style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px"><button type="button" onclick="document.getElementById('cardExpiration').value=generateExpirationDate()" style="margin-top:8px;padding:6px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer">🎲</button></div><div class="form-group"><label>CVV</label><input type="text" id="cardCVV" value="${card.cvv}" maxlength="3" style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px"><button type="button" onclick="document.getElementById('cardCVV').value=generateCVV()" style="margin-top:8px;padding:6px;background:#6c757d;color:white;border:none;border-radius:6px;cursor:pointer">🎲</button></div></div><button type="submit" class="btn btn-primary" style="margin-top:15px">💾 Enregistrer</button></form></div>`;document.body.appendChild(modal)}function saveVirtualCard(accountId){const cardNumber=document.getElementById('cardNumber').value.trim();const expiration=document.getElementById('cardExpiration').value.trim();const cvv=document.getElementById('cardCVV').value.trim();if(!cardNumber||cardNumber.replace(/\s/g,'').length!==16){alert('16 chiffres requis');return}if(!expiration.match(/^\d{2}\/\d{2}$/)){alert('Format: MM/AA');return}if(!cvv||cvv.length!==3){alert('CVV: 3 chiffres');return}const accounts=JSON.parse(localStorage.getItem('vantex_accounts'));const account=accounts.find(acc=>acc.id===accountId);account.virtualCard={number:cardNumber,expiration:expiration,cvv:cvv,updatedAt:new Date().toISOString()};localStorage.setItem('vantex_accounts',JSON.stringify(accounts));closeEditCardModal();loadAccountsTable();alert('✅ Carte mise à jour!')}function closeEditCardModal(){const modal=document.getElementById('editCardModal');if(modal)modal.remove()}initializeVirtualCards();console.log('✅ Cartes virtuelles activées');
+</script>
+</body>
+</html>
